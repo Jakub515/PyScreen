@@ -59,7 +59,6 @@ LOGIN_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="/icon.png" type="image/png">
     <title>Logowanie</title>
 </head>
 <body>
@@ -82,7 +81,6 @@ VERYFICATION_HTML = """<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="icon" href="/icon.png" type="image/png">
     <title>Weryfikacja</title>
 </head>
 <body>
@@ -117,6 +115,10 @@ def send_cors_headers(response):
     response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     return response
+
+@app.route('/favicon.ico', methods=['GET'])
+def favicon():
+    return send_file("logo.png", mimetype='image/png')
 
 @app.route('/auth/', methods=['GET'])
 def auth_get():
@@ -226,27 +228,31 @@ def auth():
 
 @app.route('/verify', methods=['POST', 'GET'])
 def verify():
-    if session.get('authenticated') in lista_uuid:
-        entered_code = request.form.get("verification_code")
+    user_uuid = session.get('authenticated')
 
-        if entered_code == session.get('verification_code'):
-            session.pop('authenticated', None)
-            special_uuid_stream = str(uuid.uuid4())
-            session['acceptStream'] = special_uuid_stream
-            lista_uuid_stream.append(special_uuid_stream)
-
-            # Usuwamy UUID z listy, aby dostęp był jednorazowy
-            if session.get('authenticated') in lista_uuid:
-                lista_uuid.remove(session.get('authenticated'))
-            session.pop('verification_code', None)  # usuwamy kod weryfikacyjny
-
-            return redirect('/stream')
-        else:
-            resp = make_response(VERYFICATION_HTML)
-            resp.status_code = 401
-            return send_cors_headers(resp)
-    else:
+    if user_uuid not in lista_uuid:
+        print("Niepoprawna sesja, usuwam `authenticated`")
+        session.pop('authenticated', None)
+        session.pop('verification_code', None)
         return redirect('/auth/')
+
+    entered_code = request.form.get("verification_code")
+    if entered_code == session.get('verification_code'):
+        special_uuid_stream = str(uuid.uuid4())
+        session['acceptStream'] = special_uuid_stream
+        lista_uuid_stream.append(special_uuid_stream)
+
+        # Usuwamy UUID użytkownika z listy, aby dostęp był jednorazowy
+        lista_uuid.remove(user_uuid)
+        session.pop('authenticated', None)
+        session.pop('verification_code', None)
+
+        return redirect('/stream')
+    else:
+        resp = make_response(VERYFICATION_HTML)
+        resp.status_code = 401
+        return send_cors_headers(resp)
+
 
 
 @app.route('/', methods=['OPTIONS'])
