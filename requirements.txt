@@ -3,4 +3,4 @@ mss==7.0.1
 Pillow==8.4.0
 pycryptodome==3.21.0
 flask==2.0.3
-
+flask-mail==0.9.1
